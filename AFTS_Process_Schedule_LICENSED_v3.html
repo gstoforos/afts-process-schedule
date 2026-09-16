@@ -1584,7 +1584,7 @@ M1520 2510 c-286 -74 -514 -300 -592 -586 -30 -112 -30 -306 1 -418 74 -274
    own numbers, which is the honest way to demo a process-authority tool:
    everything the buyer sees computed is computed by the code they are buying. */
 const BUILD   = "full";          /* "full" | "preview" */
-const VERSION = "3.0.0";
+const VERSION = "3.0.1";
 
 /* ── WHERE THIS COPY IS ALLOWED TO RUN ────────────────────────────────────
    Identical arrangement to the SIP Validator. The paywall is Wix's, not this
@@ -1878,15 +1878,32 @@ const S = {
      it locked means the buyer cannot use the thing they hold. */
   /* FOUR STATES, AND THE ORDER THEY ARE TESTED IN IS THE POINT.
        preview   the preview artefact, a different file
-       offsite   no session blob, or a hostname the gate does not serve from:
-                 a saved copy. Engine live, nothing issues.
-       expired   a real session whose four hours have run out. Engine live,
-                 every number stays on screen, nothing issues.
-       full      a live session. Everything. */
+       offsite   no session blob at all: a saved copy, or a file opened from
+                 a desktop. Engine live, nothing issues.
+       expired   a real session whose window has run out. Engine live, every
+                 number stays on screen, nothing issues.
+       full      a live session. Everything.
+
+     THE SESSION ALONE DECIDES, AND THE HOSTNAME IS NOT CONSULTED.
+     It was, and that was wrong twice over. Wrong in effect, because the Apps
+     Script sandbox does not report a hostname this file can recognise, so a
+     properly licensed copy fell through to "offsite" and refused to issue
+     anything its buyer had paid for. And wrong in principle, because a
+     hostname is a string the browser hands over — it was never the thing
+     holding the door.
+
+     What holds the door is the blob below: written by the gate, from the
+     sheet, at the moment of serving, and only after the gate has checked the
+     HMAC on the token, found the session row, confirmed it is not revoked and
+     confirmed its window is still open. A copy saved to a desktop cannot
+     forge one, because it cannot sign one.
+
+     hostAllowed() survives as an advisory the footer reports. Nothing is
+     gated on it. */
   lic : { tier: BUILD === "preview" ? "preview"
-               : (!SESSION || !hostAllowed()) ? "offsite"
-               : sessionLive()                ? "full"
-               :                                "expired",
+               : !SESSION      ? "offsite"
+               : sessionLive() ? "full"
+               :                 "expired",
           key:"", exp: SESSION ? SESSION.exp : null },
   /* NOTHING IS COMPUTED UNTIL CALCULATE PROCESS IS PRESSED.
      The desktop module does not solve as you type, and neither does this. A
@@ -6156,7 +6173,17 @@ function paintLic(){
   document.getElementById("lictext").textContent = LBL[t] || t;
   const btn = document.getElementById("btnlic");
   if (btn) btn.textContent = t === "expired" ? "Another use" : (t === "preview" || t === "offsite") ? "Unlock" : "Plans";
-  document.getElementById("ft_ver").textContent = `Process Schedule v${VERSION} · ${BUILD === "preview" ? "preview build" : "licensed build"}${SESSION && SESSION.sid ? " · session " + String(SESSION.sid).slice(0,8) : ""}`;
+  /* THE FOOTER REPORTS THE STATE IT IS ACTUALLY IN, not the state it hopes
+     for. "no session" on a licensed build is the single most useful thing
+     this file can say when something is wrong: it means the gate served the
+     page without substituting a blob, which is a server-side fault and not a
+     browser one. Without it the only difference between that and a rejected
+     session is a console nobody has open. */
+  const ftState = BUILD === "preview" ? "preview build"
+                : SESSION && SESSION.sid ? "licensed · session " + String(SESSION.sid).slice(0, 8)
+                : "licensed · no session";
+  document.getElementById("ft_ver").textContent =
+    `Process Schedule v${VERSION} · ${ftState}${hostAllowed() ? "" : " · offsite host"}`;
 }
 
 const CASE_KEY = "afts-psched-cases";
