@@ -744,7 +744,8 @@ button.lg-i:hover{border-color:var(--silver);background:var(--off);}
 .lt-cmt-live{margin-top:26px;margin-bottom:40px}
 .lt-cmt-lbl{font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;
   color:#6b6b66;margin:0 0 5px}
-.lt-cmt-ins{margin-left:10px;text-transform:none;letter-spacing:0;color:#8a8a82;font-size:.72rem}
+.lt-cmt-ins{margin-left:10px;text-transform:none;letter-spacing:0;color:#8a8a82;font-size:.72rem;
+  white-space:nowrap}   /* each group wraps whole, never mid-group */
 .lt-cmt-ins a{margin-left:6px;color:#3a3a35;text-decoration:underline;text-underline-offset:2px;font-weight:600}
 .lt-cmt-ins a:hover{color:#000}
 @media print{ .lt-cmt-ins{display:none !important} }
@@ -1758,7 +1759,7 @@ M1520 2510 c-286 -74 -514 -300 -592 -586 -30 -112 -30 -306 1 -418 74 -274
    own numbers, which is the honest way to demo a process-authority tool:
    everything the buyer sees computed is computed by the code they are buying. */
 const BUILD   = "full";          /* "full" | "preview" */
-const VERSION = "5.23.0";
+const VERSION = "5.24.0";
 
 /* ── WHERE THIS COPY IS ALLOWED TO RUN ────────────────────────────────────
    Identical arrangement to the SIP Validator. The paywall is Wix's, not this
@@ -5667,6 +5668,13 @@ function letterHTML(){
         <span class="lt-cmt-ins">Insert opening:
           <a href="#" onclick="letterInsert('us');return false;" title="21 CFR Parts 108, 113 and 117">US</a>
           <a href="#" onclick="letterInsert('eu');return false;" title="Regulation (EC) No 852/2004 and, where applicable, 853/2004">EU</a>
+        </span>
+        <!-- ITS OWN SPAN so the two groups wrap as blocks. Run in with the
+             openings, the row broke after "EU" and left the separator alone
+             at the head of the next line. -->
+        <span class="lt-cmt-ins">
+          <a href="#" onclick="letterSelectAll();return false;" title="Select everything in the box">Select all</a>
+          <a href="#" onclick="letterClear();return false;" title="Empty the box">Clear</a>
         </span></div>
       <textarea class="lt-cmt-box" id="lt_cmt_in" rows="3" spellcheck="true"
         placeholder="Any conditions or notes that belong on this letter, in your own words."
@@ -5838,8 +5846,31 @@ function letterBody(){
 }
 function openLetter(){
   if (!shown()){ alert("Please press ‘Calculate Process’ first."); return; }
+  /* A FRESH OPEN IS A FRESH LETTER. The comment used to live in S.meta.notes
+     and outlive the dialog, so a US opening inserted at ten past nine was
+     still sitting there — with its CFR citation — when the next letter of the
+     day was opened for a different product, possibly a different regulator.
+     Boilerplate that persists is boilerplate that gets signed unread.
+
+     GUARDED ON "NOT ALREADY OPEN", and that guard is the whole safety of it.
+     printLetter() calls openLetter() when the dialog is shut, so without the
+     guard a print would wipe the comment a moment before printing it. If the
+     dialog is already up, this is a re-render and the typed text stands. */
+  if (!document.getElementById("m_letter").classList.contains("on")) S.meta.notes = "";
   document.getElementById("letter_body").innerHTML = letterBody();
   document.getElementById("m_letter").classList.add("on");
+}
+
+/* Select-all and Clear, because the box grows to 420 px and dragging a
+   selection to its bottom edge inside a scrolling modal is a fight. Clear
+   puts the caret back in the box so the next thing typed lands there. */
+function letterSelectAll(){
+  const el = document.getElementById("lt_cmt_in"); if (!el) return;
+  el.focus(); el.select();
+}
+function letterClear(){
+  const el = document.getElementById("lt_cmt_in"); if (!el) return;
+  el.value = ""; letterNote(el); el.focus();
 }
 
 /* A DOCUMENT ON SCREEN MUST FOLLOW THE STATE.
